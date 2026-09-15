@@ -1,0 +1,37 @@
+# Central configuration — notebooks and src/ code read from here.
+# Keeping this out of code means re-running with different settings never
+# requires touching notebook cells.
+
+random_seed: 42
+
+data:
+  uci_dataset_id: 891
+  raw_path: "data/raw/diabetes_health_indicators.csv"
+  processed_path: "data/processed/diabetes_clean.parquet"
+  target_column: "Diabetes_binary"
+  test_size: 0.2
+  val_size: 0.1  # taken from the remaining train split
+
+imbalance:
+  method: "class_weight"  # options: class_weight | smote | none
+
+models:
+  logistic_regression:
+    max_iter: 1000
+    class_weight: "balanced"
+
+  random_forest:
+    n_estimators: 300
+    max_depth: 12
+    class_weight: "balanced"
+    n_jobs: -1
+
+  xgboost:
+    n_estimators: 400
+    max_depth: 6
+    learning_rate: 0.05
+    eval_metric: "auc"
+
+paths:
+  models_dir: "models"
+  figures_dir: "reports/figures"
