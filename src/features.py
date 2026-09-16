@@ -42,9 +42,34 @@ def add_risk_factor_count(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply the full feature engineering pipeline in one call."""
+def encode_bmi_category(df: pd.DataFrame, drop_original: bool = True) -> pd.DataFrame:
+    """One-hot encode BMI_category rather than ordinal-encode it.
+
+    Chosen over ordinal encoding because diabetes risk doesn't necessarily
+    increase monotonically with BMI category in a way a single ordinal
+    number captures well (e.g. underweight can itself carry elevated risk
+    in some populations) — one-hot lets models learn each category's
+    effect independently instead of assuming a linear order.
+    """
+    df = df.copy()
+    dummies = pd.get_dummies(df["BMI_category"], prefix="BMI_category", dtype=int)
+    df = pd.concat([df, dummies], axis=1)
+    if drop_original:
+        df = df.drop(columns=["BMI_category"])
+    return df
+
+
+def engineer_features(df: pd.DataFrame, encode: bool = True) -> pd.DataFrame:
+    """Apply the full feature engineering pipeline in one call.
+
+    encode=True also one-hot encodes BMI_category, producing a fully
+    numeric frame ready for the scaling step in preprocessing. Set
+    encode=False if you want to inspect BMI_category as a readable label
+    first (e.g. for the risk-segmentation notebook).
+    """
     df = add_bmi_category(df)
     df = add_composite_health_score(df)
     df = add_risk_factor_count(df)
+    if encode:
+        df = encode_bmi_category(df)
     return df

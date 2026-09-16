@@ -30,8 +30,27 @@ Raw data → Cleaning/Validation → EDA → Statistical Testing → Feature Eng
    → Interpretability (SHAP) → Risk Segmentation Analysis
 ```
 
-See `notebooks/` for the narrative walkthrough and `src/` for the reusable pipeline code
-that the notebooks call into.
+## Notebooks
+
+Run in order — each one saves artifacts (processed data, models, figures, CSVs)
+that the next notebook loads directly, rather than re-deriving them:
+
+1. **`01_eda.ipynb`** — univariate/bivariate/multivariate exploration, ranked
+   feature-target associations using the correct measure per variable type
+2. **`02_statistical_analysis.ipynb`** — formal hypothesis tests with
+   assumption checks, effect sizes, and multiple-testing correction. Saves
+   `reports/statistical_test_results.csv`
+3. **`03_feature_engineering.ipynb`** — builds engineered features, splits
+   train/val/test, fits the scaling pipeline on train only. Saves
+   `data/processed/*.parquet` and `models/preprocessor.joblib`
+4. **`04_modeling.ipynb`** — trains all three models, cross-validates on
+   train, selects the best on validation, evaluates once on test. Saves
+   `models/best_model.joblib` and `models/model_metadata.json`
+5. **`05_interpretability_shap.ipynb`** — SHAP global + individual
+   explanations for whichever model notebook 04 selected
+6. **`06_risk_segmentation.ipynb`** — buckets predictions into risk tiers,
+   checks distribution across income/education/healthcare-access subgroups.
+   Saves `reports/high_risk_group_summary.csv`
 
 ## Repository Structure
 
@@ -40,18 +59,35 @@ diabetes-risk-prediction/
 ├── config/            # config.yaml - paths, seed, model params
 ├── data/
 │   ├── raw/            # original untouched data (gitignored)
-│   └── processed/       # cleaned / feature-engineered data
-├── notebooks/          # analysis narrative, calls into src/
-├── src/                # reusable pipeline code
-├── models/             # saved trained models
-├── reports/figures/     # exported plots
-├── tests/               # unit tests for src/ functions
+│   └── processed/       # train/val/test splits as parquet (gitignored)
+├── notebooks/          # 01-06, analysis narrative, calls into src/
+├── src/
+│   ├── data_loader.py    # fetch from UCI, cache, validate schema
+│   ├── preprocessing.py  # cleaning, train/val/test split, scaling pipeline, SMOTE
+│   ├── features.py       # BMI category, composite health score, risk factor count
+│   ├── eda.py             # point-biserial, Cramer's V, correlation ratio, chi-square
+│   ├── hypothesis_testing.py  # normality/variance checks, effect sizes, FDR correction
+│   ├── train.py            # model training, cross-validation, save/load
+│   ├── evaluate.py          # metrics beyond accuracy, ROC/confusion matrix plots
+│   ├── interpret.py          # SHAP explainer wrappers (tree + linear)
+│   ├── segmentation.py        # risk tiering, subgroup crosstabs
+│   ├── plotting.py             # reusable univariate/bivariate plot grids
+│   └── utils.py                 # config loading, seeding, logging
+├── models/             # saved trained models + preprocessor + metadata (gitignored)
+├── reports/
+│   ├── figures/         # exported plots (23+ across all notebooks)
+│   ├── statistical_test_results.csv
+│   └── high_risk_group_summary.csv
+├── tests/               # unit tests for every src/ module (30+ tests)
 └── .github/workflows/    # CI: lint + test on push
 ```
 
 ## Key Findings
 
-_To be filled in after analysis — headline insights with supporting plots go here._
+_To be filled in after running the full pipeline — headline insights with
+supporting plots go here. Suggested structure: top 3-5 predictive features
+(from notebook 02 + 05), model performance summary, and the health-equity
+finding from notebook 06._
 
 ## Model Performance
 
@@ -67,9 +103,14 @@ _To be filled in after analysis — headline insights with supporting plots go h
 git clone <repo-url>
 cd diabetes-risk-prediction
 pip install -r requirements.txt
-# place the raw CSV in data/raw/ (see data/raw/README.md for source link)
 jupyter lab notebooks/01_eda.ipynb
 ```
+
+Run the notebooks **in order, 01 through 06** — each depends on files saved by
+the previous one (processed data, trained models, statistical results). The
+raw CSV downloads and caches automatically from UCI on first run of
+`01_eda.ipynb`; no manual download needed unless you're offline (see
+`data/raw/README.md`).
 
 ## Future Improvements
 

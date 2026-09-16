@@ -63,6 +63,23 @@ def train_xgboost(
     return model
 
 
+def cross_validate_model(model, X_train: pd.DataFrame, y_train: pd.Series, cv: int = 5, random_state: int = 42) -> dict:
+    """Stratified k-fold CV on the training set, scored on ROC-AUC.
+
+    Run this before trusting a single train/validation split — with an
+    imbalanced target, a single split can look better or worse than the
+    model's true stability by chance. Uses an unfitted clone of the model
+    so nothing here leaks fitted state from a prior .fit() call.
+    """
+    from sklearn.base import clone
+    from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+    skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=random_state)
+    scores = cross_val_score(clone(model), X_train, y_train, cv=skf, scoring="roc_auc", n_jobs=-1)
+    logger.info(f"{cv}-fold CV ROC-AUC: mean={scores.mean():.4f}, std={scores.std():.4f}")
+    return {"cv_scores": scores, "mean": scores.mean(), "std": scores.std()}
+
+
 def save_model(model, path: str) -> None:
     from pathlib import Path
 
@@ -71,3 +88,9 @@ def save_model(model, path: str) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, path)
     logger.info(f"Model saved to {path}")
+
+
+def load_model(path: str):
+    import joblib
+
+    return joblib.load(path)

@@ -7,8 +7,13 @@ verify the logic (dedup, split proportions, engineered columns).
 import pandas as pd
 import pytest
 
-from src.features import add_bmi_category, add_risk_factor_count
-from src.preprocessing import clean_data, split_data
+from src.features import (
+    add_bmi_category,
+    add_risk_factor_count,
+    encode_bmi_category,
+    engineer_features,
+)
+from src.preprocessing import build_preprocessing_pipeline, clean_data, split_data
 
 
 @pytest.fixture
@@ -25,6 +30,8 @@ def sample_df():
         "HeartDiseaseorAttack": [0] * n,
         "HvyAlcoholConsump": [0] * n,
         "BMI": [22.0, 31.0, 18.0, 27.0, 40.0, 24.0, 19.0, 29.0, 33.0, 21.0] * (n // 10),
+        "MentHlth": [0, 2, 0, 5, 10, 0, 1, 3, 0, 20] * (n // 10),
+        "PhysHlth": [0, 1, 0, 3, 15, 0, 0, 2, 1, 25] * (n // 10),
     })
 
 
@@ -68,3 +75,48 @@ def test_add_risk_factor_count(sample_df):
     assert result.loc[1, "RiskFactorCount"] == 3
     # row 0: all risk cols 0 -> count of 0
     assert result.loc[0, "RiskFactorCount"] == 0
+
+
+def test_encode_bmi_category_produces_expected_dummy_columns(sample_df):
+    df_with_cat = add_bmi_category(sample_df)
+    result = encode_bmi_category(df_with_cat)
+    expected_dummies = {
+        "BMI_category_underweight", "BMI_category_normal",
+        "BMI_category_overweight", "BMI_category_obese",
+    }
+    assert expected_dummies.issubset(set(result.columns))
+    assert "BMI_category" not in result.columns  # original dropped by default
+    # exactly one dummy should be 1 per row
+    assert (result[list(expected_dummies)].sum(axis=1) == 1).all()
+
+
+def test_engineer_features_encode_flag_controls_bmi_output(sample_df):
+    encoded = engineer_features(sample_df, encode=True)
+    unencoded = engineer_features(sample_df, encode=False)
+    assert "BMI_category" not in encoded.columns
+    assert "BMI_category" in unencoded.columns
+    # both should still produce the other engineered features
+    for df_result in (encoded, unencoded):
+        assert "UnwellDays" in df_result.columns
+        assert "RiskFactorCount" in df_result.columns
+
+
+def test_preprocessing_pipeline_no_leakage_between_train_and_val(sample_df):
+    df_fe = engineer_features(sample_df, encode=True)
+    X_train, X_val, _X_test, _y_train, _y_val, _y_test = split_data(
+        df_fe, target_column="Diabetes_binary",
+        test_size=0.2, val_size=0.1, random_state=42,
+    )
+    numeric_features = ["BMI"]
+    passthrough_features = [c for c in X_train.columns if c not in numeric_features]
+
+    pipeline = build_preprocessing_pipeline(numeric_features, passthrough_features)
+    X_train_transformed = pipeline.fit_transform(X_train)
+    X_val_transformed = pipeline.transform(X_val)
+
+    # Train's scaled BMI column should be ~exactly standardized (fit on itself)
+    assert X_train_transformed[:, 0].mean() == pytest.approx(0.0, abs=1e-6)
+    assert X_train_transformed[:, 0].std() == pytest.approx(1.0, abs=1e-6)
+    # Val was transformed using train's fitted scaler, so it should NOT be
+    # exactly standardized — if it is, that's a strong sign of data leakage.
+    assert X_val_transformed[:, 0].mean() != pytest.approx(0.0, abs=1e-6)

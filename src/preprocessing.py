@@ -63,6 +63,26 @@ def split_data(
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
+def build_preprocessing_pipeline(numeric_features: list[str], passthrough_features: list[str]):
+    """Build a ColumnTransformer that scales numeric features and leaves
+    already-binary/one-hot/ordinal features untouched.
+
+    Fit this on X_train ONLY, then use the fitted object's .transform() on
+    val/test — never .fit_transform() on val/test, which would leak
+    train-set statistics into evaluation.
+    """
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import StandardScaler
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("scale", StandardScaler(), numeric_features),
+            ("passthrough", "passthrough", passthrough_features),
+        ],
+    )
+    return preprocessor
+
+
 def apply_smote(X_train: pd.DataFrame, y_train: pd.Series, random_state: int):
     """Oversample the minority class in the training set only.
 
