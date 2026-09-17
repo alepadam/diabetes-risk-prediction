@@ -49,3 +49,62 @@ def test_summarize_high_risk_group_flags_overrepresentation():
     pct_high = level_1_row["pct_in_high_risk_group"].iloc[0]
     pct_overall = level_1_row["pct_in_overall_population"].iloc[0]
     assert pct_high > pct_overall  # level 1 is overrepresented among High risk
+
+
+# --- Regression tests for the index-misalignment bug -----------------------
+#
+# In practice, `risk_tier` (built from a plain numpy probability array via
+# bucket_risk_scores) always gets a fresh 0..n-1 index, while a DataFrame
+# like X_test loaded after a train_test_split keeps its original,
+# non-contiguous row index. Combining the two via pandas' default
+# index-alignment (pd.crosstab, df.loc[boolean_series]) silently produces
+# wrong numbers — no error, no warning. These tests reproduce that exact
+# scenario and assert the functions are correct regardless of index.
+
+def test_crosstab_risk_by_subgroup_correct_with_mismatched_index():
+    # risk_tier has a default 0..3 index; subgroup has a deliberately
+    # different, non-contiguous index — exactly the real-world scenario.
+    risk_tier = pd.Series(["Low", "High", "Low", "High"])
+    subgroup = pd.Series([1, 1, 2, 2], index=[100, 205, 7, 300])
+
+    ct = crosstab_risk_by_subgroup(risk_tier, subgroup)
+
+    # Row-for-row (positional) correspondence: row0=(1,Low), row1=(1,High),
+    # row2=(2,Low), row3=(2,High) — so group 1 should be 50/50 Low/High,
+    # and group 2 should also be 50/50 Low/High.
+    assert ct.loc[1, "Low"] == pytest.approx(50.0)
+    assert ct.loc[1, "High"] == pytest.approx(50.0)
+    assert ct.loc[2, "Low"] == pytest.approx(50.0)
+    assert ct.loc[2, "High"] == pytest.approx(50.0)
+
+
+def test_summarize_high_risk_group_correct_with_mismatched_index():
+    # df has a non-contiguous index; risk_tier has a default 0..3 index.
+    df = pd.DataFrame({"group": [10, 10, 20, 20]}, index=[50, 12, 900, 3])
+    risk_tier = pd.Series(["High", "Low", "High", "Low"])
+
+    summary = summarize_high_risk_group(df, risk_tier, ["group"])
+
+    # Positionally: row0=(group10,High), row1=(group10,Low),
+    # row2=(group20,High), row3=(group20,Low) — group 10 and group 20 should
+    # each be 50% of the High-risk tier (1 of 2 High-risk rows each).
+    group_10_row = summary[summary["level"] == 10].iloc[0]
+    group_20_row = summary[summary["level"] == 20].iloc[0]
+    assert group_10_row["pct_in_high_risk_group"] == pytest.approx(50.0)
+    assert group_20_row["pct_in_high_risk_group"] == pytest.approx(50.0)
+
+
+def test_crosstab_risk_by_subgroup_raises_on_length_mismatch():
+    # A genuine length mismatch (not just a differing index) must fail
+    # loudly rather than silently truncating or padding with NaN.
+    risk_tier = pd.Series(["Low", "High", "Low"])
+    subgroup = pd.Series([1, 2])
+    with pytest.raises(ValueError, match="same length"):
+        crosstab_risk_by_subgroup(risk_tier, subgroup)
+
+
+def test_summarize_high_risk_group_raises_on_length_mismatch():
+    df = pd.DataFrame({"group": [1, 2, 3]})
+    risk_tier = pd.Series(["Low", "High"])
+    with pytest.raises(ValueError, match="same length"):
+        summarize_high_risk_group(df, risk_tier, ["group"])

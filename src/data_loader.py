@@ -38,7 +38,18 @@ def fetch_and_cache_raw_data(config: dict) -> pd.DataFrame:
     dataset = fetch_ucirepo(id=config["data"]["uci_dataset_id"])
     X = dataset.data.features
     y = dataset.data.targets
-    df = pd.concat([X, y], axis=1)
+    # Defensive check before combining: pd.concat(axis=1) silently aligns by
+    # index, so if X and y ever came back from the library with mismatched
+    # indices, rows would combine incorrectly with no error. Reset both to a
+    # shared default index before concatenating — this makes the combine
+    # purely positional (row i of X with row i of y) regardless of whatever
+    # index ucimlrepo happens to attach, so the same class of silent
+    # misalignment bug fixed in src/segmentation.py can't recur here.
+    assert len(X) == len(y), (
+        f"Features and target have different row counts (X={len(X)}, y={len(y)}) "
+        "— cannot safely combine them."
+    )
+    df = pd.concat([X.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
 
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(raw_path, index=False)

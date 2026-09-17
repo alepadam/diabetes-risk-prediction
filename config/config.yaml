@@ -10,7 +10,12 @@ data:
   processed_path: "data/processed/diabetes_clean.parquet"
   target_column: "Diabetes_binary"
   test_size: 0.2
-  val_size: 0.1  # taken from the remaining train split
+  # val_size is a fraction of the ORIGINAL full dataset, not of the
+  # remaining train split. With test_size=0.2 and val_size=0.1 below, the
+  # actual split is 70% train / 10% val / 20% test of the original data —
+  # split_data() internally converts this to the correct relative fraction
+  # for the second train_test_split call (see src/preprocessing.py).
+  val_size: 0.1
 
 imbalance:
   method: "class_weight"  # options: class_weight | smote | none
