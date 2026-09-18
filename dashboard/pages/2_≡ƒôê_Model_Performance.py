@@ -12,7 +12,6 @@ for _p in (DASHBOARD_DIR, PROJECT_ROOT):
         sys.path.insert(0, str(_p))
 
 import streamlit as st
-
 from utils.model_loader import artifacts_available, get_figure_path, load_metadata
 from utils.styling import apply_custom_theme
 

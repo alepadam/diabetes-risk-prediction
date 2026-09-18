@@ -12,7 +12,6 @@ for _p in (DASHBOARD_DIR, PROJECT_ROOT):
 
 import matplotlib.pyplot as plt
 import streamlit as st
-
 from utils.mappings import (
     EDUCATION_OPTIONS,
     GENHLTH_OPTIONS,
