@@ -52,6 +52,20 @@ that the next notebook loads directly, rather than re-deriving them:
    checks distribution across income/education/healthcare-access subgroups.
    Saves `reports/high_risk_group_summary.csv`
 
+## Dashboard
+
+An interactive Streamlit dashboard lives in `dashboard/` — a Risk Calculator
+with personalized SHAP explanations, Model Performance, and Data Insights
+pages, built on the exact trained model/preprocessor from notebooks 03-04
+(no reimplemented logic, no train/serve skew). **Requires notebooks 01-06 to
+have been run first** — see `dashboard/README.md` for setup and details.
+
+```bash
+cd dashboard
+pip install -r requirements.txt
+streamlit run app.py
+```
+
 ## Repository Structure
 
 ```
@@ -73,12 +87,16 @@ diabetes-risk-prediction/
 │   ├── segmentation.py        # risk tiering, subgroup crosstabs
 │   ├── plotting.py             # reusable univariate/bivariate plot grids
 │   └── utils.py                 # config loading, seeding, logging
+├── dashboard/           # Streamlit app — see dashboard/README.md
+│   ├── app.py
+│   ├── pages/            # Risk Calculator, Model Performance, Data Insights
+│   └── utils/             # styling, input mappings, cached loaders, prediction pipeline
 ├── models/             # saved trained models + preprocessor + metadata (gitignored)
 ├── reports/
 │   ├── figures/         # exported plots (23+ across all notebooks)
 │   ├── statistical_test_results.csv
 │   └── high_risk_group_summary.csv
-├── tests/               # unit tests for every src/ module (30+ tests)
+├── tests/               # unit tests for every src/ module (45+ tests)
 └── .github/workflows/    # CI: lint + test on push
 ```
 
@@ -114,12 +132,13 @@ raw CSV downloads and caches automatically from UCI on first run of
 
 ## Future Improvements
 
-- Deploy the best model as a FastAPI or Streamlit interactive risk-checking demo
-- Add SHAP-based per-individual explanation to the demo ("why was I flagged high-risk?")
+- ~~Deploy the best model as an interactive risk-checking demo~~ ✅ done — see `dashboard/`
+- ~~Add SHAP-based per-individual explanation to the demo~~ ✅ done — Risk Calculator page shows a waterfall plot per prediction
 - Experiment with the 3-class target (`Diabetes_012`: none / pre / diabetic)
 - Fairness/bias audit of predictions across income and education subgroups
 - Add experiment tracking (MLflow) as more models/configs are tried
 - Automate the pipeline end-to-end with a `Makefile` and data versioning (DVC)
+- Deploy the dashboard itself (Streamlit Community Cloud, or containerize + host)
 
 ## License
 
