@@ -5,16 +5,22 @@ notebooks pipeline (notebooks 01-06). Reuses the exact trained model,
 preprocessor, and feature engineering from that pipeline — nothing here is
 reimplemented or approximated.
 
+Navigation is a **top nav bar** (via `st.navigation(position="top")`), not
+the sidebar page list — a small sidebar remains for project branding.
+
 ## Pages
 
-1. **Overview** (`app.py`) — project summary, headline model metrics
+1. **🩺 Overview** (`pages/overview.py`) — project summary, headline metrics
 2. **🎯 Risk Calculator** — enter your own health/lifestyle info, get a
    personalized risk score with a SHAP waterfall explanation of *why*
-3. **📈 Model Performance** — how the best model was selected (CV,
-   validation, test) and evaluated, with confusion matrix / ROC curve /
-   SHAP importance plots pulled from the notebooks' saved figures
-4. **🔎 Data Insights** — the statistical findings from notebook 02 and the
-   health-equity risk-segmentation finding from notebook 06
+3. **📊 About Us** — two tabs in one page:
+   - *Model Performance*: how the best model was selected (CV, validation,
+     test), confusion matrix, ROC curve, SHAP global importance
+   - *Data Insights*: the statistical findings from notebook 02 and the
+     health-equity risk-segmentation finding from notebook 06
+4. **🏥 Diabetes Info & Clinics** — plain-language diabetes education
+   (types, symptoms, risk factors, prevention) plus a clinic locator that
+   embeds a Google Maps search (no API key required)
 
 ## Prerequisites
 
@@ -46,16 +52,18 @@ Opens at `http://localhost:8501` by default.
 
 ```
 dashboard/
-├── app.py                          # Overview page (entry point)
+├── app.py                          # navigation controller (st.navigation, top bar)
 ├── pages/
-│   ├── 1_🎯_Risk_Calculator.py
-│   ├── 2_📈_Model_Performance.py
-│   └── 3_🔎_Data_Insights.py
+│   ├── overview.py
+│   ├── risk_calculator.py
+│   ├── about_us.py                 # Model Performance + Data Insights, via st.tabs
+│   └── diabetes_info_clinics.py    # education + clinic locator
 ├── utils/
 │   ├── styling.py                  # shared color palette + CSS
 │   ├── mappings.py                 # real age/BMI -> dataset's coded categories
 │   ├── model_loader.py             # cached loading of model/preprocessor/reports
 │   └── predict.py                  # single-input prediction pipeline (reuses src/)
+├── tests/                          # pytest coverage for utils/
 ├── .streamlit/
 │   └── config.toml                 # theme colors
 └── requirements.txt
@@ -63,10 +71,24 @@ dashboard/
 
 ## Design Notes
 
+- **Page icons are a parameter, not part of the filename**
+  (`st.Page(..., icon="🎯")` in `app.py`) — deliberately, since emoji in
+  *filenames* can get mangled by some zip tools (notably Windows' built-in
+  "Extract All", which falls back to a non-UTF-8 codepage). Emoji in page
+  *titles/content* is unaffected and safe.
+- **`st.set_page_config()` and the custom CSS are set once**, in `app.py`
+  only — calling them again inside a page file would error or be redundant,
+  since `app.py` is the sole entry point under `st.navigation()`.
 - **No train/serve skew**: `utils/predict.py` imports and calls the *same*
   `src.preprocessing.clean_data`, `src.features.engineer_features`, and the
   fitted `preprocessor.joblib` used during training — it does not
-  reimplement any of that logic.
+  reimplement any of that logic. `utils/predict.get_shap_model_type()`
+  mirrors the same tree-vs-linear check notebook 05 uses, so the SHAP
+  explainer always matches whichever model actually won training.
+- **Clinic locator caveat**: the embedded map uses a public, no-API-key
+  Google Maps search URL. It's a convenience preview, not a verified
+  clinic directory — the "Open in Google Maps" link is the reliable
+  fallback if the embed doesn't render.
 - **Color palette**: deliberately muted (deep teal, warm off-white, earthy
   risk-tier colors) rather than the default bright blue/purple Streamlit
   look — defined once in `utils/styling.py`.

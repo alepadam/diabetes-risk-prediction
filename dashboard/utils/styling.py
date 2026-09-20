@@ -109,6 +109,25 @@ def apply_custom_theme(st) -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
+def render_sidebar(st) -> None:
+    """Render the shared branding sidebar. Call from EVERY page, not just
+    one — under st.navigation(), only the active page's script body
+    executes per render, so sidebar content defined in a single page file
+    would only appear on that one page and silently vanish everywhere
+    else. This was an actual bug (fixed): the sidebar previously only
+    lived in pages/overview.py's own script.
+    """
+    with st.sidebar:
+        st.markdown("### 🩺 Diabetes Risk\nPrediction Dashboard")
+        st.markdown("---")
+        st.markdown(
+            "Built on the **CDC Diabetes Health Indicators** dataset "
+            "(BRFSS 2015, 253,680 respondents)."
+        )
+        st.markdown("---")
+        st.caption("Muhammad Aliff Adam bin Sultan · Universiti Malaya")
+
+
 def risk_badge_html(risk_tier: str, probability: float) -> str:
     """Build the HTML for a colored risk-tier badge."""
     tier_class = {

@@ -17,6 +17,7 @@ for _p in (DASHBOARD_DIR, PROJECT_ROOT):
 import numpy as np
 import pandas as pd
 import pytest
+
 from utils.predict import (
     RAW_FEATURE_COLUMNS,
     build_raw_input_df,

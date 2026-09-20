@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
+
 from utils.mappings import AGE_BUCKETS, age_to_bucket, calculate_bmi
 
 
