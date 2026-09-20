@@ -14,7 +14,6 @@ for _p in (DASHBOARD_DIR, PROJECT_ROOT):
         sys.path.insert(0, str(_p))
 
 import streamlit as st
-
 from utils.styling import render_sidebar
 
 render_sidebar(st)

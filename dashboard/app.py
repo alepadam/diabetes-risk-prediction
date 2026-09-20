@@ -17,7 +17,6 @@ if str(DASHBOARD_DIR) not in sys.path:
     sys.path.insert(0, str(DASHBOARD_DIR))
 
 import streamlit as st
-
 from utils.styling import apply_custom_theme
 
 # set_page_config and the custom CSS injection must happen exactly once,
